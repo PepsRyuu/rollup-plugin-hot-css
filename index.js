@@ -56,8 +56,16 @@ module.exports = function (options) {
         },
 
         generateBundle (options, bundle) {
-            let entryFile = options.file.split('/').pop();
-            let modules = bundle[entryFile].modules;
+            let modules = {};
+
+            for (let file in bundle) {
+                let fileModules = bundle[file].modules;
+                if (fileModules) {
+                    for (let key in fileModules) {
+                        modules[key] = true;
+                    }
+                }
+            }
 
             let output = '';
             Object.keys(modules).forEach(filename => {
