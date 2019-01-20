@@ -39,6 +39,7 @@ module.exports = function (options) {
     let filename = options.filename || 'styles.css';
     let extensions = options.extensions || ['.css', '.scss', '.less'];
     let transform = options.transform || (code => code); 
+    let emittedId;
 
     return {
         transform: function (code, id) {
@@ -48,8 +49,12 @@ module.exports = function (options) {
 
             files[id] = transform(code, id);
 
+            if (!emittedId) {
+                emittedId = this.emitAsset(filename);
+            }
+
             if (options.hot) {
-                return getHotLinkTag(filename);
+                return getHotLinkTag(this.getAssetFileName(emittedId));
             }
 
             return '';
@@ -74,7 +79,7 @@ module.exports = function (options) {
                 }
             });
 
-            this.emitAsset(filename, output);
+            this.setAssetSource(emittedId, output);
         }
     }
 }
