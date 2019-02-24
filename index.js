@@ -29,8 +29,8 @@ function getHotLinkTag (filename) {
         }
 
         reload();
-        module.hot.dispose(reload);
-        module.hot.accept(reload);
+        module && module.hot && module.hot.dispose(reload);
+        module && module.hot && module.hot.accept(reload);
     `; 
 }
 
@@ -79,7 +79,9 @@ module.exports = function (options) {
                 }
             });
 
-            this.setAssetSource(emittedId, output);
+            if (emittedId) {
+                this.setAssetSource(emittedId, output);
+            }
         }
     }
 }
