@@ -10,11 +10,11 @@ function getHotLinkTag (filename) {
             window.__styleLinkTimeout = requestAnimationFrame(() => {
                 var link = document.querySelector('link[href*="${filename}"]');
 
-                if (!window.__styleLinkHref) {
-                    window.__styleLinkHref = link.getAttribute('href');
-                }
-
                 if (link) {
+                    if (!window.__styleLinkHref) {
+                        window.__styleLinkHref = link.getAttribute('href');
+                    }
+
                     var newLink = document.createElement('link');
                     newLink.setAttribute('rel', 'stylesheet');
                     newLink.setAttribute('type', 'text/css');
