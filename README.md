@@ -1,6 +1,6 @@
 # rollup-plugin-hot-css
 
-A generic CSS loader for [Rollup](https://rollupjs.org). Supports Hot Module Replacement when used with [Nollup](https://github.com/PepsRyuu/nollup).
+A generic CSS loader for [Rollup](https://rollupjs.org). Supports Hot Module Replacement when used with [Nollup](https://github.com/PepsRyuu/nollup). If the CSS imports any assets such as images or fonts, those URLs are resolved with assets emitted. 
 
 ## How to use
 
@@ -11,31 +11,59 @@ let hotcss = require('rollup-plugin-hot-css');
 
 module.exports = {
     ...
-    experimentalCodeSplitting: true,
     plugins: [
         hotcss({
-            filename: 'styles.css',
+            file: 'styles.css',
             extensions: ['.css', '.scss'],
-            transform: code => {
-                return scss(code);
-            },
+            loaders: ['scss'],
             hot: true
         })
     ]
 }
 ```
 
-**Note:** ```experimentalCodeSplitting``` must be enabled as this plugin uses ```emitAsset``` plugin API.
-
 ## Options
 
-* ***String* filename -** Output file name. Default is ```styles.css```.
+* ***String* file -** Output file name. Default is ```styles.css```.
 
 * ***Array<String>* extensions -** Extensions to run the plugin for. Default is ```.css, .scss, .less```
 
-* ***Function* transform -** Function that receives the code. Return transformed code. Preprocessors such as SCSS or LESS should be executed here. Default is to return the same code.
+* ***Function* loaders -** Array of preprocessors to run. Can accept either a string or a function. The only supported strings are ```scss``` and ```less``` (note: they must be installed). Passing a custom loader can be done using a function. The function will receive ```input``` and ```id```. ```input``` will contain ```code``` and ```map``` with the code and sourcemap so far. 
 
 * ***Boolean* hot -** Enable hot module replacement using &lt;link&gt; tag. This should be disabled if building for production. Default is ```false```.
+
+* ***Boolean* url -** Enable resolving URLs found in CSS file and export those assets. Default is ```true```.
+
+## Loaders
+
+There are two built in loaders: ```scss``` and ```less```. Custom loaders can be specified, as described below:
+
+```
+function MyCustomLoader (input, id) {
+    // input.code
+    // input.map
+
+    return {
+        code: /* transformed code as a string */,
+        map: /* source map */
+    }
+}
+
+hotcss({
+    loaders: ['scss', MyCustomLoader]
+})
+```
+
+Loaders can also be asynchronous by returning a Promise:
+
+```
+function MyCustomLoader (input, id) {
+    return new Promise(resolve => ({
+        code: /* transformed code as a string */,
+        map: /* source map */
+    }));
+}
+```
 
 ## Hot Module Replacement
 
