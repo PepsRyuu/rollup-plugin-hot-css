@@ -10,3 +10,4 @@ target/
 *.stackdump
 coverage/
 package-lock.json
+*.tgz
