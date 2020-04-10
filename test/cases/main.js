@@ -1,6 +1,27 @@
 let { fs, expect, rollup, nollup, plugin } = require('../common');
 let path = require('path');
 
+if (!window.__protocol_registered) {
+    window.__protocol_registered = true;
+    
+    let { protocol } = require('electron').remote;
+
+    protocol.unregisterProtocol('test');
+    protocol.registerBufferProtocol('test', (request, result) => {
+        window.__protocol_callback(request, result);
+    });
+}
+
+window.__protocol_callback = () => {};
+
+function registerProtocolCallback (callback) {
+    window.__protocol_callback = callback;
+}
+
+function unregisterProtocolCallback () {
+    window.__protocol_callback = () => {};
+}
+
 async function generateImpl (options, engine, extra_plugins = []) {
     let bundle = await engine({
         input: './src/main.js',
@@ -12,6 +33,12 @@ async function generateImpl (options, engine, extra_plugins = []) {
 
     let response = await bundle.generate({ format: 'esm' });
     return response;
+}
+
+function wait (delay) {
+    return new Promise(resolve => {
+        setTimeout(resolve, delay);
+    });
 }
 
 async function generateBundle (options, engine, extra_plugins) {
@@ -62,6 +89,46 @@ describe('Rollup Plugin Hot CSS', function () {
                     let output = await generateBundle({}, entry.engine);
 
                     expect(output[1].source).to.equal('.main{color:red}\n.other{color:green}\n');
+
+                    fs.reset();
+                });
+
+                it ('should support multiple imported css files by multiple files', async () => {
+                    fs.stub('./src/other.css', () => `.other { color: green; }`);
+                    fs.stub('./src/main.css', () => `.main { color: red; }`);
+                    fs.stub('./src/other.js', () => `import "./other.css";`)
+                    fs.stub('./src/main.js', () => `import "./main.css"; import "./other";`);
+                    let output = await generateBundle({}, entry.engine);
+
+                    expect(output[1].source).to.equal('.main{color:red}\n.other{color:green}\n');
+
+                    fs.reset();
+                });
+
+                it ('should support CSS imported in a circular dependency tree', async () => {
+                    fs.stub('./src/main.css', () => `.main { color: red; }`);
+                    fs.stub('./src/other.js', () => `import "./main";`)
+                    fs.stub('./src/main.js', () => `import "./main.css"; import "./other";`);
+                    let output = await generateBundle({}, entry.engine);
+
+                    expect(output[1].source).to.equal('.main{color:red}\n');
+
+                    fs.reset();
+                });
+
+                it ('should not include removed CSS on rebuild', async () => {
+                    fs.stub('./src/other.css', () => `.other { color: green; }`);
+                    fs.stub('./src/main.css', () => `.main { color: red; }`);
+                    fs.stub('./src/other.js', () => `import "./other.css";`)
+                    fs.stub('./src/main.js', () => `import "./main.css"; import "./other";`);
+                    let output = await generateBundle({}, entry.engine);
+
+                    expect(output[1].source).to.equal('.main{color:red}\n.other{color:green}\n');
+
+                    fs.stub('./src/main.js', () => `import "./main.css";`);
+
+                    output = await generateBundle({}, entry.engine);
+                    expect(output[1].source).to.equal('.main{color:red}\n');
 
                     fs.reset();
                 });
@@ -346,47 +413,56 @@ describe('Rollup Plugin Hot CSS', function () {
     });
 
     describe('HMR', () => {
+        let hmr_handle = {};
 
-        // TODO: This test is fairly fragile, need fallbacks
+        let hmr_plugin = function () {
+            return {
+                nollupModuleInit () {
+                    return `
+                        module.hot = {
+                            accept: function (callback) {
+                                hmr_handle.accept = callback;
+                            },
+
+                            dispose: function (callback) {
+                                hmr_handle.dispose = callback;
+                            }
+                        };
+                    `;
+                }
+            }
+        }
+
+        function clear () {
+            hmr_handle = {};
+            delete window.__css_reload;
+            unregisterProtocolCallback();
+            fs.reset();
+
+            [].forEach.call(document.querySelectorAll('link'), el => {
+                el.remove()
+            });
+        }
+
+        beforeEach(() => clear());
+        afterEach(() => clear());
+
         it ('should replace link tag when module is updated', async () => {
             fs.stub('./src/main.css', () => `.main { color: red; }`);
             fs.stub('./src/main.js', () => `import "./main.css";`);
 
-            let acceptCallback;
-
-            let output = await generateBundle({
-                hot: true
-            }, nollup, [
-                {
-                    nollupModuleInit () {
-                        return `
-                            module.hot = {
-                                accept: function (callback) {
-                                    acceptCallback = callback;
-                                },
-
-                                dispose: function (callback) {
-                                    this._dispose = callback;
-                                }
-                            };
-                        `;
-                    }
-                }
-            ]);
-
+            let output = await generateBundle({ hot: true }, nollup, [ hmr_plugin() ]);
             let hmrphase = 0;
-            let { protocol } = require('electron').remote;
 
-            protocol.unregisterProtocol('test');
-            protocol.registerBufferProtocol('test', (request, result) => {
+            registerProtocolCallback((req, res) => {
                 let content = hmrphase === 0? `
                     .main { color: red }
                 ` : `
                     .main { color: blue }
                 `
 
-                if (request.url.indexOf('.css') > -1) {
-                    return result({ 
+                if (req.url.indexOf('.css') > -1) {
+                    return res({ 
                         mimeType: 'text/css', 
                         data: Buffer.from(content) 
                     });
@@ -406,23 +482,69 @@ describe('Rollup Plugin Hot CSS', function () {
 
             eval(output[0].code);
 
-            return new Promise(resolve => {
-                setTimeout(() => {
-                    expect(window.getComputedStyle(el).color).to.equal('rgb(255, 0, 0)');
-                    hmrphase++;
-                    acceptCallback();
+            await wait(2000);
 
-                    setTimeout(() => {
-                        expect(window.getComputedStyle(el).color).to.equal('rgb(0, 0, 255)')
-                        delete window.__css_reload;
+            expect(window.getComputedStyle(el).color).to.equal('rgb(255, 0, 0)');
+            hmrphase++;
+            hmr_handle.accept();
 
-                        link.remove();
-                        fs.reset();
-                        protocol.unregisterProtocol('test');
-                        resolve();
-                    }, 2000);
-                }, 2000)
+            await wait(2000);
+
+            expect(window.getComputedStyle(el).color).to.equal('rgb(0, 0, 255)');
+        });
+
+        it ('should replace link tag when module is removed and re-added', async () => {
+            fs.stub('./src/other.css', () => `.other { color: blue; }`);
+            fs.stub('./src/main.css', () => `.main { color: red; }`);
+            fs.stub('./src/main.js', () => `import "./main.css"; import "./other.css";`);
+
+            let output = await generateBundle({ hot: true }, nollup, [ hmr_plugin() ]);
+
+            registerProtocolCallback((req, res) => {
+                if (req.url.indexOf('.css') > -1) {
+                    let content = output[1].source;
+
+                    return res({ 
+                        mimeType: 'text/css', 
+                        data: Buffer.from(content) 
+                    });
+                }
             });
+
+            let link = document.createElement('link');
+            link.setAttribute('rel', 'stylesheet');
+            link.setAttribute('type', 'text/css');
+            link.setAttribute('href', 'test://assets/styles-[hash].css');
+            document.head.appendChild(link);
+
+            // setup the hmr accepts
+            eval(output[0].code);
+
+            await wait(2000);
+
+            expect(document.styleSheets[0].cssRules[0].cssText).to.equal('.main { color: red; }');
+            expect(document.styleSheets[0].cssRules[1].cssText).to.equal('.other { color: blue; }');
+
+            fs.stub('./src/main.js', () => `import "./main.css";`);      
+            output = await generateBundle({ hot: true }, nollup, [ hmr_plugin() ]);
+            hmr_handle.accept();
+
+            await wait(2000);
+
+            expect(document.styleSheets.length).to.equal(1);
+            expect(document.styleSheets[0].cssRules.length).to.equal(1);
+            expect(document.styleSheets[0].cssRules[0].cssText).to.equal('.main { color: red; }');
+
+            fs.stub('./src/main.js', () => `import "./main.css"; import "./other.css";`);      
+            output = await generateBundle({ hot: true }, nollup, [ hmr_plugin() ]);
+            hmr_handle.accept();
+
+            await wait(2000);
+
+            expect(document.styleSheets.length).to.equal(1);
+            expect(document.styleSheets[0].cssRules.length).to.equal(2);
+            expect(document.styleSheets[0].cssRules[0].cssText).to.equal('.main { color: red; }');
+            expect(document.styleSheets[0].cssRules[1].cssText).to.equal('.other { color: blue; }');
         });
     });
 });

@@ -5,6 +5,7 @@ let SourceMap = require('source-map');
 
 function getHotModuleCode () {
     return `
+        window.__css_reload();
         module && module.hot && module.hot.dispose(window.__css_reload);
         module && module.hot && module.hot.accept(window.__css_reload);
     `;  
@@ -144,11 +145,35 @@ module.exports = function (options) {
         renderChunk (code, chunkInfo) {
             let output = '';
 
-            Object.keys(chunkInfo.modules).forEach(filename => {
-                if (files[filename]) {
-                    output += files[filename] + '\n';
+            // Find the entry file, because reading all
+            // modules here will involve multiple traversals down the same tree.
+            // Note that with Rollup 2, chunkInfo.modules only includes modules
+            // that have not been tree-shaken. So if you have modA import modB, and modB
+            // only imports CSS and nothing else, modB will not be included in chunkInfo.
+            // This is because modB exports no code, so only entry file can be relied on.
+            let entry = Object.keys(chunkInfo.modules).filter(filename => {
+                return this.getModuleInfo(filename).isEntry;
+            })[0];
+
+            // Traverse the dependency tree
+            let modulesChecked = {};
+            let findCSS = (id) => {
+                // Circular Dependency check
+                if (modulesChecked[id]) {
+                    return;
                 }
-            });
+
+                modulesChecked[id] = true;
+                this.getModuleInfo(id).importedIds.forEach(id => {
+                    if (files[id]) {
+                        output += files[id] + '\n';
+                    } else {
+                        findCSS(id);
+                    }
+                });
+            };
+
+            findCSS(entry);
 
             Object.keys(assets).forEach(assetId => {
                 // TODO: File type detection, put into a folder rather than root of assets
