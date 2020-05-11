@@ -74,6 +74,12 @@ function createLoaderPipeline (options, assets) {
     if (options.url) {
         pipeline.push((input, id) => {
             let ast = csstree.parse(input.code, { positions: true });
+            let map;
+
+            if (input.map) {
+                let inputMap = typeof input.map === 'string'? JSON.parse(input.map) : input.map;
+                map = new SourceMap.SourceMapConsumer(inputMap);
+            }
 
             csstree.walk(ast, node => {
                 if (node.type === 'Url' && node.value.type === 'String') {
@@ -82,8 +88,6 @@ function createLoaderPipeline (options, assets) {
                     
                     if (relfilepath) {
                         if (input.map) {
-                            let inputMap = typeof input.map === 'string'? JSON.parse(input.map) : input.map;
-                            let map = new SourceMap.SourceMapConsumer(inputMap);
                             let sourcefile = map.originalPositionFor(node.loc.start).source;
                             sourcedir = path.resolve(sourcedir, path.dirname(sourcefile));
                         }
