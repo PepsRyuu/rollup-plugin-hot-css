@@ -112,9 +112,14 @@ function createLoaderPipeline (options, assets) {
     return pipeline;
 }
 
+const SIDE_EFFECT_CODE = 'window.__rollup_plugin_hot_css__ = 123';
+const SIDE_EFFECT_CODE_REGEX = new RegExp(SIDE_EFFECT_CODE, 'g');
+const SIDE_EFFECT_CODE_REPLACEMENT = 'false';
+
 module.exports = function (options) {
     let files = {};
     let assets = {};
+    let output = '';
 
     let opts = {
         file: options.file || 'styles.css',
@@ -143,42 +148,34 @@ module.exports = function (options) {
                 return getHotModuleCode();
             }
 
-            return '';
-        },
-
-        renderChunk (code, chunkInfo) {
-            let output = '';
-
-            // Find the entry file, because reading all
-            // modules here will involve multiple traversals down the same tree.
             // Note that with Rollup 2, chunkInfo.modules only includes modules
             // that have not been tree-shaken. So if you have modA import modB, and modB
             // only imports CSS and nothing else, modB will not be included in chunkInfo.
             // This is because modB exports no code, so only entry file can be relied on.
-            let entry = Object.keys(chunkInfo.modules).filter(filename => {
-                return this.getModuleInfo(filename).isEntry;
-            })[0];
-
-            // Traverse the dependency tree
-            let modulesChecked = {};
-            let findCSS = (id) => {
-                // Circular Dependency check
-                if (modulesChecked[id]) {
-                    return;
-                }
-
-                modulesChecked[id] = true;
-                this.getModuleInfo(id).importedIds.forEach(id => {
-                    if (files[id]) {
-                        output += files[id] + '\n';
-                    } else {
-                        findCSS(id);
-                    }
-                });
+            // To bypass this, a side effect is created and replaced before finalising.
+            return {
+                code: SIDE_EFFECT_CODE,
+                moduleSideEffects: true
             };
+        },
 
-            findCSS(entry);
+        renderStart () {
+            output = '';
+        },
 
+        renderChunk (code, chunkInfo) {
+            Object.keys(chunkInfo.modules).filter(fileName => {
+                if (files[fileName]) {
+                    output += files[fileName] + '\n';
+                }
+            });
+
+            if (!opts.hot) {
+                return code.replace(SIDE_EFFECT_CODE_REGEX, SIDE_EFFECT_CODE_REPLACEMENT);
+            }
+        },
+
+        generateBundle (outputOptions, bundle) {
             Object.keys(assets).forEach(assetId => {
                 // TODO: File type detection, put into a folder rather than root of assets
                 let asset_ref = this.emitFile({
@@ -197,35 +194,39 @@ module.exports = function (options) {
                 name: opts.file
             });
 
-            return (opts.hot? `
-                ;(function () {
-                    window.__css_reload = function () {
-                        if (window.__styleLinkTimeout) {
-                            cancelAnimationFrame(window.__styleLinkTimeout);
-                        }
-
-                        window.__styleLinkTimeout = requestAnimationFrame(() => {
-                            var link = document.querySelector('link[href*="${this.getFileName(css_ref)}"]');
-
-                            if (link) {
-                                if (!window.__styleLinkHref) {
-                                    window.__styleLinkHref = link.getAttribute('href');
+            Object.keys(bundle).forEach(fileName => {
+                if (bundle[fileName].isEntry && opts.hot) {
+                    bundle[fileName].code = `
+                        ;(function () {
+                            window.__css_reload = function () {
+                                if (window.__styleLinkTimeout) {
+                                    cancelAnimationFrame(window.__styleLinkTimeout);
                                 }
 
-                                var newLink = document.createElement('link');
-                                newLink.setAttribute('rel', 'stylesheet');
-                                newLink.setAttribute('type', 'text/css');
-                                newLink.setAttribute('href', window.__styleLinkHref + '?' + Date.now());
-                                newLink.onload = () => {
-                                    link.remove();
-                                };
+                                window.__styleLinkTimeout = requestAnimationFrame(() => {
+                                    var link = document.querySelector('link[href*="${this.getFileName(css_ref)}"]');
 
-                                document.head.appendChild(newLink);
+                                    if (link) {
+                                        if (!window.__styleLinkHref) {
+                                            window.__styleLinkHref = link.getAttribute('href');
+                                        }
+
+                                        var newLink = document.createElement('link');
+                                        newLink.setAttribute('rel', 'stylesheet');
+                                        newLink.setAttribute('type', 'text/css');
+                                        newLink.setAttribute('href', window.__styleLinkHref + '?' + Date.now());
+                                        newLink.onload = () => {
+                                            link.remove();
+                                        };
+
+                                        document.head.appendChild(newLink);
+                                    }
+                                });
                             }
-                        });
-                    }
-                })();
-            ` : '') + code;
+                        })();
+                    ` + bundle[fileName].code;
+                }
+            });
         }
     }
 }
