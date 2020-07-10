@@ -32,7 +32,7 @@ module.exports = {
 
 * ***Boolean* hot -** Enable hot module replacement using &lt;link&gt; tag. This should be disabled if building for production. Default is ```false```.
 
-* ***Boolean* url -** Enable resolving URLs found in CSS file and export those assets. Default is ```true```.
+* ***Boolean* url -** Enable resolving URLs found in CSS file and export those assets. This will resolve after all other loaders. Sourcemaps must be emitted by the previous loader for this to work. Default is ```true```.
 
 ## Loaders
 
@@ -63,6 +63,25 @@ function MyCustomLoader (input, id) {
         map: /* source map */
     }));
 }
+```
+
+An example using ```postcss```:
+
+```
+let autoprefixer = require('autoprefixer')
+let postcss = require('postcss')
+
+function PostCSSLoader (input, id) {
+    return postcss([autoprefixer]).process(input.code).then(res => {
+        return {
+            code: res.css
+        };
+    });
+}
+
+hotcss({
+    loaders: ['scss', PostCSSLoader]
+})
 ```
 
 ## Hot Module Replacement
