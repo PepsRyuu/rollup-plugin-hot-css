@@ -145,8 +145,10 @@ module.exports = function (options) {
                 input = await pipeline[i](input, id);
             }
 
-            for (let dep of input.watchFiles) {
-                this.addWatchFile(dep)
+            if (Array.isArray(input.watchFiles)) {
+                for (let dep of input.watchFiles) {
+                    this.addWatchFile(dep)
+                }
             }
 
             files[id] = input.code;
