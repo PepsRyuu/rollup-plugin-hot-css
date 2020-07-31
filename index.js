@@ -34,7 +34,8 @@ function createLoaderPipeline (options, assets) {
 
                 return { 
                     code: transpiled.css.toString(),
-                    map: transpiled.map.toString()
+                    map: transpiled.map.toString(),
+                    watchFiles: transpiled.stats.includedFiles || []
                 };
             });
         }
@@ -61,7 +62,8 @@ function createLoaderPipeline (options, assets) {
 
                 return { 
                     code, 
-                    map
+                    map,
+                    watchFiles: []
                 };
             });
         }
@@ -104,6 +106,7 @@ function createLoaderPipeline (options, assets) {
             });
 
             return { 
+                ...input,
                 code: csstree.generate(ast) 
             };
         });
@@ -140,6 +143,10 @@ module.exports = function (options) {
             let input = { code };
             for (let i = 0; i < pipeline.length; i++) {
                 input = await pipeline[i](input, id);
+            }
+
+            for (let dep of input.watchFiles) {
+                this.addWatchFile(dep)
             }
 
             files[id] = input.code;
