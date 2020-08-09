@@ -42,10 +42,12 @@ There are two built in loaders: ```scss``` and ```less```. Custom loaders can be
 function MyCustomLoader (input, id) {
     // input.code
     // input.map
+    // input.watchFiles
 
     return {
         code: /* transformed code as a string */,
-        map: /* source map */
+        map: /* source map */,
+        watchFiles: /* optional extra files to watch for changes */
     }
 }
 
@@ -60,7 +62,8 @@ Loaders can also be asynchronous by returning a Promise:
 function MyCustomLoader (input, id) {
     return new Promise(resolve => ({
         code: /* transformed code as a string */,
-        map: /* source map */
+        map: /* source map */,
+        watchFiles: /* optional extra files to watch for changes */
     }));
 }
 ```
