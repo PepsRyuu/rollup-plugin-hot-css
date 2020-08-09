@@ -1,7 +1,7 @@
 {
     "name": "rollup-plugin-hot-css",
     "description": "CSS loader for Rollup with HMR support for Nollup.",
-    "version": "0.3.1",
+    "version": "0.4.0",
     "main": "index.js",
     "author": "Paul Sweeney",
     "license": "MIT",
