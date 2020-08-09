@@ -407,8 +407,6 @@ describe('Rollup Plugin Hot CSS', function () {
                     fs.reset();
                 });
             });
-
-
         });
     });
 
@@ -545,6 +543,94 @@ describe('Rollup Plugin Hot CSS', function () {
             expect(document.styleSheets[0].cssRules.length).to.equal(2);
             expect(document.styleSheets[0].cssRules[0].cssText).to.equal('.main { color: red; }');
             expect(document.styleSheets[0].cssRules[1].cssText).to.equal('.other { color: blue; }');
+        });
+
+        describe('Watch Files', () => {
+            it ('should call addWatchFile for each watchFile returned by a loader (less)', async () => {
+                fs.stub('./src/other.less', () => `.main { &.subclass { color: red } }`);
+                fs.stub('./src/main.less', () => `@import './other.less';`);
+                fs.stub('./src/main.js', () => `import "./main.less";`);
+
+                let bundle = await nollup({
+                    input: './src/main.js',
+                    plugins: [
+                        plugin({ loaders: ['less'] })
+                    ]
+                });
+
+                let result = await bundle.generate({ format: 'esm' });
+                expect(result.output[1].source).to.equal('.main.subclass{color:red}\n'); 
+
+                fs.stub('./src/other.less', () => `.main { &.subclass { color: blue } }`);
+
+                bundle.invalidate(path.resolve(process.cwd(), './src/other.less'));
+
+                result = await bundle.generate({ format: 'esm' });
+                expect(result.output[1].source).to.equal('.main.subclass{color:blue}\n'); 
+
+                fs.reset();
+            });
+
+            it ('should call addWatchFile for each watchFile returned by a loader (scss)', async () => {
+                fs.stub('./src/other.scss', () => `.main { &.subclass { color: red } }`);
+                fs.stub('./src/main.scss', () => `@import './other.scss';`);
+                fs.stub('./src/main.js', () => `import "./main.scss";`);
+
+                let bundle = await nollup({
+                    input: './src/main.js',
+                    plugins: [
+                        plugin({ loaders: ['scss'] })
+                    ]
+                });
+
+                let result = await bundle.generate({ format: 'esm' });
+                expect(result.output[1].source).to.equal('.main.subclass{color:red}\n'); 
+
+                fs.stub('./src/other.scss', () => `.main { &.subclass { color: blue } }`);
+
+                bundle.invalidate(path.resolve(process.cwd(), './src/other.scss'));
+
+                result = await bundle.generate({ format: 'esm' });
+                expect(result.output[1].source).to.equal('.main.subclass{color:blue}\n'); 
+
+                fs.reset();
+            });
+
+            it ('should call addWatchFile for each watchFile returned by a loader (custom)', async () => {
+                fs.stub('./src/other.pss', () => `.lol { color: red }`);
+                fs.stub('./src/main.pss', () => ``);
+                fs.stub('./src/main.js', () => `import "./main.pss";`);
+
+                let bundle = await nollup({
+                    input: './src/main.js',
+                    plugins: [
+                        plugin({ 
+                            extensions: ['.pss'],
+                            loaders: [
+                                function (input, id) {
+                                    let other = path.resolve(process.cwd(), './src/other.pss');
+                                    return {
+                                        code: fs.readFileSync(other, 'utf8'),
+                                        watchFiles: [other]
+                                    }
+                                }
+                            ]
+                        })
+                    ]
+                });
+
+                let result = await bundle.generate({ format: 'esm' });
+                expect(result.output[1].source).to.equal('.lol{color:red}\n'); 
+
+                fs.stub('./src/other.pss', () => `.lol { color: blue }`);
+
+                bundle.invalidate(path.resolve(process.cwd(), './src/other.pss'));
+
+                result = await bundle.generate({ format: 'esm' });
+                expect(result.output[1].source).to.equal('.lol{color:blue}\n'); 
+
+                fs.reset();
+            });
         });
     });
 });

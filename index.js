@@ -42,7 +42,7 @@ function createLoaderPipeline (options, assets) {
 
         if (loader === 'less') {
             pipeline.push((input, id) => {
-                let code, map;
+                let code, map, watchFiles;
                 let transpiled = require('less').render(input.code, {
                     async: false,
                     filename: id,
@@ -58,12 +58,13 @@ function createLoaderPipeline (options, assets) {
 
                     code = input.css;
                     map = input.map;
+                    watchFiles = input.imports || [];
                 });
 
                 return { 
                     code, 
                     map,
-                    watchFiles: []
+                    watchFiles
                 };
             });
         }
@@ -106,7 +107,6 @@ function createLoaderPipeline (options, assets) {
             });
 
             return { 
-                ...input,
                 code: csstree.generate(ast) 
             };
         });
@@ -143,11 +143,11 @@ module.exports = function (options) {
             let input = { code };
             for (let i = 0; i < pipeline.length; i++) {
                 input = await pipeline[i](input, id);
-            }
 
-            if (Array.isArray(input.watchFiles)) {
-                for (let dep of input.watchFiles) {
-                    this.addWatchFile(dep)
+                if (input.watchFiles) {
+                    for (let j = 0; j < input.watchFiles.length; j++) {
+                        this.addWatchFile(input.watchFiles[j]);
+                    }
                 }
             }
 

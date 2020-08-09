@@ -31,6 +31,9 @@ let path = require('path');
                         }
 
                         output = result;
+                        output.stats = {
+                            includedFiles: result.imports
+                        }
                     })
 
                     return output;
