@@ -28,7 +28,7 @@ function createLoaderPipeline (options, assets) {
                     data: input.code,
                     file: id,
                     outFile: id,
-                    sourceMap: options.hot,
+                    sourceMap: true,
                     sourceMapEmbed: options.hot,
                     sourceMapRoot: path.dirname(id).replace(process.cwd(),''),
                     includePaths: [ path.dirname(id) ]
