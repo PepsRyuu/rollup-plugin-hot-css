@@ -4,9 +4,11 @@ A generic CSS loader for [Rollup](https://rollupjs.org). Supports Hot Module Rep
 
 ## How to use
 
-```npm install rollup-plugin-hot-css```
-
+```sh
+npm install rollup-plugin-hot-css
 ```
+
+```js
 let hotcss = require('rollup-plugin-hot-css');
 
 module.exports = {
@@ -38,7 +40,7 @@ module.exports = {
 
 There are two built in loaders: ```scss``` and ```less```. Custom loaders can be specified, as described below:
 
-```
+```js
 function MyCustomLoader (input, id) {
     // input.code
     // input.map
@@ -58,7 +60,7 @@ hotcss({
 
 Loaders can also be asynchronous by returning a Promise:
 
-```
+```js
 function MyCustomLoader (input, id) {
     return new Promise(resolve => ({
         code: /* transformed code as a string */,
@@ -70,7 +72,7 @@ function MyCustomLoader (input, id) {
 
 An example using ```postcss```:
 
-```
+```js
 let autoprefixer = require('autoprefixer')
 let postcss = require('postcss')
 
@@ -91,7 +93,7 @@ hotcss({
 
 The HMR API expects there to be a ```link``` tag inside the ```index.html``` file.
 
-```
+```html
 <link rel="stylesheet" type="text/css" href="/styles.css">
 ```
 
