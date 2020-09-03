@@ -26,19 +26,19 @@ module.exports = {
 
 ## Options
 
-* ***String* file -** Output file name. Default is ```styles.css```.
+* ***String* file -** Output file name. Default is `styles.css`.
 
-* ***Array<String>* extensions -** Extensions to run the plugin for. Default is ```.css, .scss, .less```
+* ***Array<String>* extensions -** Extensions to run the plugin for. Default is `.css, .scss, .less`
 
-* ***Function* loaders -** Array of preprocessors to run. Can accept either a string or a function. The only supported strings are ```scss``` and ```less``` (note: they must be installed). Passing a custom loader can be done using a function. The function will receive ```input``` and ```id```. ```input``` will contain ```code``` and ```map``` with the code and sourcemap so far. 
+* ***Function* loaders -** Array of preprocessors to run. Can accept either a string or a function. The only supported strings are `scss` and `less` (note: they must be installed). Passing a custom loader can be done using a function. The function will receive `input` and `id`. `input` will contain `code` and `map` with the code and sourcemap so far. 
 
-* ***Boolean* hot -** Enable hot module replacement using &lt;link&gt; tag. This should be disabled if building for production. Default is ```false```.
+* ***Boolean* hot -** Enable hot module replacement using &lt;link&gt; tag. This should be disabled if building for production. Default is `false`.
 
-* ***Boolean* url -** Enable resolving URLs found in CSS file and export those assets. This will resolve after all other loaders. Sourcemaps must be emitted by the previous loader for this to work. Default is ```true```.
+* ***Boolean* url -** Enable resolving URLs found in CSS file and export those assets. This will resolve after all other loaders. Sourcemaps must be emitted by the previous loader for this to work. Default is `true`.
 
 ## Loaders
 
-There are two built in loaders: ```scss``` and ```less```. Custom loaders can be specified, as described below:
+There are two built in loaders: `scss` and `less`. Custom loaders can be specified, as described below:
 
 ```js
 function MyCustomLoader (input, id) {
@@ -70,7 +70,7 @@ function MyCustomLoader (input, id) {
 }
 ```
 
-An example using ```postcss```:
+An example using `postcss`:
 
 ```js
 let autoprefixer = require('autoprefixer')
@@ -91,11 +91,11 @@ hotcss({
 
 ## Hot Module Replacement
 
-The HMR API expects there to be a ```link``` tag inside the ```index.html``` file.
+The HMR API expects there to be a `link` tag inside the `index.html` file.
 
 ```html
 <link rel="stylesheet" type="text/css" href="/styles.css">
 ```
 
-When file changes are made, the link tag is replaced by appending a timestamp to the end of the ```href```. This forces the browser to download the file again.
+When file changes are made, the link tag is replaced by appending a timestamp to the end of the `href`. This forces the browser to download the file again.
 
