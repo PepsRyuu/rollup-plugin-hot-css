@@ -26,7 +26,7 @@ module.exports = {
 
 ## Options
 
-* ***String* file -** Output file name. Default is ```styles.css```.
+* ***String* file -** Output file name. Default is ```styles.css```. The final name of this file will be based on ```assetsFileName``` Rollup output option. 
 
 * ***Array<String>* extensions -** Extensions to run the plugin for. Default is ```.css, .scss, .less```
 
@@ -98,4 +98,6 @@ The HMR API expects there to be a ```link``` tag inside the ```index.html``` fil
 ```
 
 When file changes are made, the link tag is replaced by appending a timestamp to the end of the ```href```. This forces the browser to download the file again.
+
+Note that the ```href``` is based on the ```assetsFileName``` option. If using Nollup for example, if your ```assetsFileName``` option is set to ```[name].[hash][extname]``` then ```href``` should be set to ```/styles.[hash].css```.
 
