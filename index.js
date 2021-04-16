@@ -92,8 +92,10 @@ function createLoaderPipeline (options, assets) {
                     if (relfilepath) {
                         if (input.map) {
                             let sourcefile = map.originalPositionFor(node.loc.start).source;
-                            sourcedir = path.resolve(sourcedir, path.dirname(sourcefile));
-                        }
+                            if (sourcefile) {
+                                sourcedir = path.resolve(sourcedir, path.dirname(sourcefile));
+                            }
+                       }
 
                         let filepath = path.resolve(sourcedir, relfilepath);
                         if (fs.existsSync(filepath)) {
