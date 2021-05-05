@@ -11,7 +11,7 @@ let path = require('path');
 
     // Proxyquire doesn't use require function below.
     Module._load = function (mod, module) {
-        if (mod === 'node-sass') {
+        if (mod === 'node-sass' || mod === 'sass') {
             let less = req.call(module, 'less');
 
             return {
