@@ -24,7 +24,15 @@ function createLoaderPipeline (options, assets) {
     options.loaders.forEach(loader => {
         if (loader === 'scss') {
             pipeline.push((input, id) => {
-                let transpiled = require('node-sass').renderSync({
+                let sass = null;
+                try {
+                    sass = require('sass')
+                } catch (e) {
+                    if (e.code === 'MODULE_NOT_FOUND') {
+                        sass = require('node-sass')
+                    }
+                }
+                let transpiled = sass.renderSync({
                     data: input.code,
                     file: id,
                     outFile: id,
