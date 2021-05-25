@@ -217,6 +217,10 @@ module.exports = function (options) {
                 if (bundle[fileName].isEntry && opts.hot) {
                     bundle[fileName].code = `
                         ;(function () {
+                            if (typeof window === 'undefined') {
+                                return;
+                            }
+
                             window.__css_reload = function () {
                                 if (window.__styleLinkTimeout) {
                                     cancelAnimationFrame(window.__styleLinkTimeout);
