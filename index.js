@@ -203,7 +203,7 @@ module.exports = function (options) {
                     name: path.basename(assetId)
                 });
 
-                output = output.replace('__ASSET__' + assetId, this.getFileName(asset_ref));
+                output = output.replace(new RegExp('__ASSET__' + assetId, 'g'), this.getFileName(asset_ref));
             });
 
             // TODO: Check for extract mode, loader mode and inline mode

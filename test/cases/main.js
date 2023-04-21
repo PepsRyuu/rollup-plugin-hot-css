@@ -326,7 +326,27 @@ describe('Rollup Plugin Hot CSS', function () {
 
 
                     fs.reset();
-                });              
+                });         
+                
+                it ('should resolve the same url multiple times', async () => {
+                    fs.stub('./src/images/logo.svg', () => '<svg></svg>');
+                    fs.stub('./src/scss/main.scss', () => `
+                        .main { background-image: url("../images/logo.svg") }
+                        .other { background-image: url("../images/logo.svg") }
+                    `);
+                    fs.stub('./src/main.js', () => `import './scss/main.scss';`);
+
+                    let output = await generateBundle({ loaders: ['scss'] }, entry.engine);
+
+                    expect(/assets\/logo-(.*?)\.svg/.test(output[1].fileName)).to.be.true;
+                    expect(output[1].source).to.equal(`<svg></svg>`);
+
+                    expect(/assets\/styles-(.*?)\.css/.test(output[2].fileName)).to.be.true;
+                    expect(output[2].source.indexOf(`.main{background-image:url("${output[1].fileName}")}`) > -1).to.be.true;
+                    expect(output[2].source.indexOf(`.other{background-image:url("${output[1].fileName}")}`) > -1).to.be.true;
+
+                    fs.reset();
+                });
             });
 
             describe('Loaders', () => {
