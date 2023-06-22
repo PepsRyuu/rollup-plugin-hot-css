@@ -36,6 +36,8 @@ module.exports = {
 
 * ***Boolean* url -** Enable resolving URLs found in CSS file and export those assets. This will resolve after all other loaders. Sourcemaps must be emitted by the previous loader for this to work. Default is ```true```.
 
+* ***String* publicPath -** Used by HMR. If the app is not being hosted on the root of the domain but instead in a subdirectory, use this option to provide the path prefix. Default is ```/```.
+
 ## Loaders
 
 There are two built in loaders: ```scss``` and ```less```. Custom loaders can be specified, as described below:

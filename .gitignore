@@ -11,3 +11,4 @@ target/
 coverage/
 package-lock.json
 *.tgz
+NOTES

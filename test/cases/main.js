@@ -216,18 +216,25 @@ describe('Rollup Plugin Hot CSS', function () {
             });
 
             describe('URL Resolving', () => {
+                function findOutput(output, regex) {
+                    for (let i = 0; i < output.length; i++) {
+                        if (regex.test(output[i].fileName)) {
+                            return output[i];
+                        }
+                    }
+                }
+
                 it ('should resolve urls in CSS files and emit the assets and replace the url', async () => {
                     fs.stub('./src/images/logo.svg', () => '<svg></svg>');
                     fs.stub('./src/main.css', () => `.main { background-image: url("./images/logo.svg") }`);
                     fs.stub('./src/main.js', () => `import './main.css';`);
 
                     let output = await generateBundle({}, entry.engine);
+                    let logo = findOutput(output, /assets\/logo-(.*?)\.svg/);
+                    let styles = findOutput(output, /assets\/styles-(.*?)\.css/);
 
-                    expect(/assets\/logo-(.*?)\.svg/.test(output[1].fileName)).to.be.true;
-                    expect(output[1].source).to.equal(`<svg></svg>`);
-
-                    expect(/assets\/styles-(.*?)\.css/.test(output[2].fileName)).to.be.true;
-                    expect(output[2].source).to.equal(`.main{background-image:url("${output[1].fileName}")}\n`);
+                    expect(logo.source).to.equal(`<svg></svg>`);
+                    expect(styles.source).to.equal(`.main{background-image:url("${path.basename(logo.fileName)}")}\n`);
 
 
                     fs.reset();
@@ -252,12 +259,10 @@ describe('Rollup Plugin Hot CSS', function () {
 
                     let output = await generateBundle({ loaders: ['scss'] }, entry.engine);
 
-                    expect(/assets\/logo-(.*?)\.svg/.test(output[1].fileName)).to.be.true;
-                    expect(output[1].source).to.equal(`<svg></svg>`);
-
-                    expect(/assets\/styles-(.*?)\.css/.test(output[2].fileName)).to.be.true;
-                    expect(output[2].source).to.equal(`.main{background-image:url("${output[1].fileName}")}\n`);
-
+                    let logo = findOutput(output, /assets\/logo-(.*?)\.svg/);
+                    let styles = findOutput(output, /assets\/styles-(.*?)\.css/);
+                    expect(logo.source).to.equal(`<svg></svg>`);
+                    expect(styles.source).to.equal(`.main{background-image:url("${path.basename(logo.fileName)}")}\n`);
 
                     fs.reset();
                 });
@@ -269,12 +274,10 @@ describe('Rollup Plugin Hot CSS', function () {
 
                     let output = await generateBundle({ loaders: ['less'] }, entry.engine);
 
-                    expect(/assets\/logo-(.*?)\.svg/.test(output[1].fileName)).to.be.true;
-                    expect(output[1].source).to.equal(`<svg></svg>`);
-
-                    expect(/assets\/styles-(.*?)\.css/.test(output[2].fileName)).to.be.true;
-                    expect(output[2].source).to.equal(`.main{background-image:url("${output[1].fileName}")}\n`);
-
+                    let logo = findOutput(output, /assets\/logo-(.*?)\.svg/);
+                    let styles = findOutput(output, /assets\/styles-(.*?)\.css/);
+                    expect(logo.source).to.equal(`<svg></svg>`);
+                    expect(styles.source).to.equal(`.main{background-image:url("${path.basename(logo.fileName)}")}\n`);
 
                     fs.reset();
                 })
@@ -287,12 +290,10 @@ describe('Rollup Plugin Hot CSS', function () {
 
                     let output = await generateBundle({ loaders: ['scss'] }, entry.engine);
 
-                    expect(/assets\/logo-(.*?)\.svg/.test(output[1].fileName)).to.be.true;
-                    expect(output[1].source).to.equal(`<svg></svg>`);
-
-                    expect(/assets\/styles-(.*?)\.css/.test(output[2].fileName)).to.be.true;
-                    expect(output[2].source).to.equal(`.main{background-image:url("${output[1].fileName}")}\n`);
-
+                    let logo = findOutput(output, /assets\/logo-(.*?)\.svg/);
+                    let styles = findOutput(output, /assets\/styles-(.*?)\.css/);
+                    expect(logo.source).to.equal(`<svg></svg>`);
+                    expect(styles.source).to.equal(`.main{background-image:url("${path.basename(logo.fileName)}")}\n`);
 
                     fs.reset();
                 });
@@ -305,11 +306,10 @@ describe('Rollup Plugin Hot CSS', function () {
 
                     let output = await generateBundle({ loaders: ['less'] }, entry.engine);
 
-                    expect(/assets\/logo-(.*?)\.svg/.test(output[1].fileName)).to.be.true;
-                    expect(output[1].source).to.equal(`<svg></svg>`);
-
-                    expect(/assets\/styles-(.*?)\.css/.test(output[2].fileName)).to.be.true;
-                    expect(output[2].source).to.equal(`.main{background-image:url("${output[1].fileName}")}\n`);
+                    let logo = findOutput(output, /assets\/logo-(.*?)\.svg/);
+                    let styles = findOutput(output, /assets\/styles-(.*?)\.css/);
+                    expect(logo.source).to.equal(`<svg></svg>`);
+                    expect(styles.source).to.equal(`.main{background-image:url("${path.basename(logo.fileName)}")}\n`);
 
                     fs.reset();
                 });  
@@ -321,9 +321,8 @@ describe('Rollup Plugin Hot CSS', function () {
 
                     let output = await generateBundle({ url: false }, entry.engine);
 
-                    expect(/assets\/styles-(.*?)\.css/.test(output[1].fileName)).to.be.true;
-                    expect(output[1].source).to.equal(`.main { background-image: url("./images/logo.svg") }\n`);
-
+                    let styles = findOutput(output, /assets\/styles-(.*?)\.css/);
+                    expect(styles.source).to.equal(`.main { background-image: url("./images/logo.svg") }\n`);
 
                     fs.reset();
                 });         
@@ -337,13 +336,11 @@ describe('Rollup Plugin Hot CSS', function () {
                     fs.stub('./src/main.js', () => `import './scss/main.scss';`);
 
                     let output = await generateBundle({ loaders: ['scss'] }, entry.engine);
-
-                    expect(/assets\/logo-(.*?)\.svg/.test(output[1].fileName)).to.be.true;
-                    expect(output[1].source).to.equal(`<svg></svg>`);
-
-                    expect(/assets\/styles-(.*?)\.css/.test(output[2].fileName)).to.be.true;
-                    expect(output[2].source.indexOf(`.main{background-image:url("${output[1].fileName}")}`) > -1).to.be.true;
-                    expect(output[2].source.indexOf(`.other{background-image:url("${output[1].fileName}")}`) > -1).to.be.true;
+                    let logo = findOutput(output, /assets\/logo-(.*?)\.svg/);
+                    let styles = findOutput(output, /assets\/styles-(.*?)\.css/);
+                    expect(logo.source).to.equal(`<svg></svg>`);
+                    expect(styles.source.indexOf(`.main{background-image:url("${path.basename(logo.fileName)}")}`) > -1).to.be.true;
+                    expect(styles.source.indexOf(`.other{background-image:url("${path.basename(logo.fileName)}")}`) > -1).to.be.true;
 
                     fs.reset();
                 });
@@ -454,6 +451,8 @@ describe('Rollup Plugin Hot CSS', function () {
         function clear () {
             hmr_handle = {};
             delete window.__css_reload;
+            delete window.__css_registered;
+            delete window.__css_register;
             unregisterProtocolCallback();
             fs.reset();
 
@@ -565,6 +564,53 @@ describe('Rollup Plugin Hot CSS', function () {
             expect(document.styleSheets[0].cssRules[1].cssText).to.equal('.other { color: blue; }');
         });
 
+        it('should prepend public path to asset file name for HMR', async () => {
+            fs.stub('./src/main.css', () => `.main { color: red; }`);
+            fs.stub('./src/main.js', () => `import "./main.css";`);
+
+            let output = await generateBundle({ hot: true, publicPath: '/myapp' }, nollup, [ hmr_plugin() ]);
+            let hmrphase = 0;
+
+            registerProtocolCallback((req, res) => {
+                let content = hmrphase === 0? `
+                    .main { color: red }
+                ` : `
+                    .main { color: blue }
+                `
+
+                if (req.url.indexOf('.css') > -1) {
+                    return res({ 
+                        mimeType: 'text/css', 
+                        data: Buffer.from(content) 
+                    });
+                }
+            });
+
+            let link = document.createElement('link');
+            link.setAttribute('rel', 'stylesheet');
+            link.setAttribute('type', 'text/css');
+            link.setAttribute('href', 'test://myapp/assets/styles-[hash].css');
+            document.head.appendChild(link);
+
+            let el = document.createElement('div');
+            el.setAttribute('class', 'main');
+            el.textContent = 'hello';
+            document.body.appendChild(el);
+
+            eval(output[0].code);
+
+            await wait(2000);
+
+            expect(window.getComputedStyle(el).color).to.equal('rgb(255, 0, 0)');
+            hmrphase++;
+            hmr_handle.accept();
+
+            await wait(2000);
+
+            expect(window.getComputedStyle(el).color).to.equal('rgb(0, 0, 255)');
+        })
+
+
         describe('Watch Files', () => {
             it ('should call addWatchFile for each watchFile returned by a loader (less)', async () => {
                 fs.stub('./src/other.less', () => `.main { &.subclass { color: red } }`);
@@ -652,5 +698,72 @@ describe('Rollup Plugin Hot CSS', function () {
                 fs.reset();
             });
         });
+
+        describe('Parallel', () => {
+            it('should support multiple parallel files to update', async () => {
+                fs.stub('./src/main.css', () => `.mainA { color: red; }`);
+                fs.stub('./src/main.js', () => `import "./main.css";`);
+                let outputA = await generateBundle({ hot: true, publicPath: '/app-a' }, nollup, [ hmr_plugin() ]);
+                fs.stub('./src/main.css', () => `.mainB { color: red; }`);
+                let outputB = await generateBundle({ hot: true, publicPath: '/app-b' }, nollup, [ hmr_plugin() ]);
+               
+                let hmrphase = 0;
+
+                registerProtocolCallback((req, res) => {
+                    let postfix = req.url.indexOf('/app-a') > -1? 'A' : 'B';
+                    let content = hmrphase === 0? `
+                        .main${postfix} { color: red }
+                    ` : `
+                        .main${postfix} { color: blue }
+                    `
+
+                    if (req.url.indexOf('.css') > -1) {
+                        return res({ 
+                            mimeType: 'text/css', 
+                            data: Buffer.from(content) 
+                        });
+                    }
+                });
+
+                let linkA = document.createElement('link');
+                linkA.setAttribute('rel', 'stylesheet');
+                linkA.setAttribute('type', 'text/css');
+                linkA.setAttribute('href', 'test://app-a/assets/styles-[hash].css');
+                document.head.appendChild(linkA);
+
+                let linkB = document.createElement('link');
+                linkB.setAttribute('rel', 'stylesheet');
+                linkB.setAttribute('type', 'text/css');
+                linkB.setAttribute('href', 'test://app-b/assets/styles-[hash].css');
+                document.head.appendChild(linkB);
+
+                let elA = document.createElement('div');
+                elA.setAttribute('class', 'mainA');
+                elA.textContent = 'hello';
+                document.body.appendChild(elA);
+
+                let elB = document.createElement('div');
+                elB.setAttribute('class', 'mainB');
+                elB.textContent = 'hello';
+                document.body.appendChild(elB);
+
+                eval(outputA[0].code);
+                eval(outputB[0].code);
+
+                await wait(2000);
+
+                expect(window.getComputedStyle(elA).color).to.equal('rgb(255, 0, 0)');
+                expect(window.getComputedStyle(elB).color).to.equal('rgb(255, 0, 0)');
+                hmrphase++;
+                hmr_handle.accept();
+
+                await wait(2000);
+
+                expect(window.getComputedStyle(elA).color).to.equal('rgb(0, 0, 255)');
+                expect(window.getComputedStyle(elB).color).to.equal('rgb(0, 0, 255)');
+            });
+        });
+
+
     });
 });

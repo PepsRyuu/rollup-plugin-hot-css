@@ -139,7 +139,8 @@ module.exports = function (options) {
         extensions: options.extensions || ['.css', '.scss', '.less'],
         loaders: options.loaders || [],
         hot: options.hot,
-        url: options.url !== undefined? options.url : true
+        url: options.url !== undefined? options.url : true,
+        publicPath: options.publicPath || ''
     };
 
     let pipeline = createLoaderPipeline(opts, assets);
@@ -203,7 +204,10 @@ module.exports = function (options) {
                     name: path.basename(assetId)
                 });
 
-                output = output.replace(new RegExp('__ASSET__' + assetId, 'g'), this.getFileName(asset_ref));
+                output = output.replace(
+                    new RegExp('__ASSET__' + assetId, 'g'), 
+                    path.basename(this.getFileName(asset_ref)) // TODO: asset function
+                );
             });
 
             // TODO: Check for extract mode, loader mode and inline mode
@@ -215,37 +219,53 @@ module.exports = function (options) {
 
             Object.keys(bundle).forEach(fileName => {
                 if (bundle[fileName].isEntry && opts.hot) {
+                    let cssRefFN = this.getFileName(css_ref);
                     bundle[fileName].code = `
                         ;(function () {
                             if (typeof window === 'undefined') {
                                 return;
                             }
 
-                            window.__css_reload = function () {
-                                if (window.__styleLinkTimeout) {
-                                    cancelAnimationFrame(window.__styleLinkTimeout);
-                                }
-
-                                window.__styleLinkTimeout = requestAnimationFrame(() => {
-                                    var link = document.querySelector('link[href*="${this.getFileName(css_ref)}"]');
-
-                                    if (link) {
-                                        if (!window.__styleLinkHref) {
-                                            window.__styleLinkHref = link.getAttribute('href');
-                                        }
-
-                                        var newLink = document.createElement('link');
-                                        newLink.setAttribute('rel', 'stylesheet');
-                                        newLink.setAttribute('type', 'text/css');
-                                        newLink.setAttribute('href', window.__styleLinkHref + '?' + Date.now());
-                                        newLink.onload = () => {
-                                            link.remove();
-                                        };
-
-                                        document.head.appendChild(newLink);
+                            if (!window.__css_reload) {
+                                window.__css_registered = [];
+                                window.__css_reload = function() {
+                                    if (window.__css_reload_timeout) {
+                                        cancelAnimationFrame(window.__css_reload_timeout);
                                     }
-                                });
+
+                                    window.__css_reload_timeout = requestAnimationFrame(function () {
+                                        window.__css_registered.forEach(function (name) {
+                                            var links = document.querySelectorAll('link');
+                                            var link = [].filter.call(links, function (l) {
+                                                let href = l.href.replace(/^[a-z]+:\\/\\//, '/');
+                                                return href.startsWith(name);
+                                            })[0];
+        
+                                            if (link) {
+                                                var href = link.getAttribute('href').split('?')[0];
+                                                var newLink = document.createElement('link');
+                                                newLink.setAttribute('rel', 'stylesheet');
+                                                newLink.setAttribute('type', 'text/css');
+                                                newLink.setAttribute('href', href + '?' + Date.now());
+                                                newLink.onload = function () {
+                                                    link.remove();
+                                                };
+        
+                                                document.head.appendChild(newLink);
+                                            }
+                                        });
+                                        
+                                    });
+                                };
+
+                                window.__css_register = function(name) {
+                                    if (window.__css_registered.indexOf(name) === -1) {
+                                        window.__css_registered.push(name);
+                                    }
+                                };
                             }
+
+                            window.__css_register('${opts.publicPath}/${cssRefFN}');
                         })();
                     ` + bundle[fileName].code;
                 }
