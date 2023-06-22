@@ -237,7 +237,7 @@ module.exports = function (options) {
                                         window.__css_registered.forEach(function (name) {
                                             var links = document.querySelectorAll('link');
                                             var link = [].filter.call(links, function (l) {
-                                                let href = l.href.replace(/^[a-z]+:\\/\\//, '/');
+                                                let href = l.getAttribute('href').replace(/^[a-z]+:\\/\\//, '/');
                                                 return href.startsWith(name);
                                             })[0];
         
