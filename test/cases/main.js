@@ -608,7 +608,68 @@ describe('Rollup Plugin Hot CSS', function () {
             await wait(2000);
 
             expect(window.getComputedStyle(el).color).to.equal('rgb(0, 0, 255)');
-        })
+        });
+
+        it('should only affect rel="stylesheet" link tags with the href', async () => {
+            fs.stub('./src/main.css', () => `.main { color: red; }`);
+            fs.stub('./src/main.js', () => `import "./main.css";`);
+
+            let output = await generateBundle({ hot: true, publicPath: '/myapp' }, nollup, [ hmr_plugin() ]);
+            let hmrphase = 0;
+
+            registerProtocolCallback((req, res) => {
+                let content = hmrphase === 0? `
+                    .main { color: red }
+                ` : `
+                    .main { color: blue }
+                `
+
+                if (req.url.indexOf('.css') > -1) {
+                    return res({ 
+                        mimeType: 'text/css', 
+                        data: Buffer.from(content) 
+                    });
+                }
+            });
+
+            let stylePath = 'test://myapp/assets/styles-[hash].css';
+
+            let preload = document.createElement('link');
+            preload.setAttribute('rel', 'preload');
+            preload.setAttribute('href', stylePath);
+            document.head.appendChild(preload);
+
+            let link = document.createElement('link');
+            link.setAttribute('rel', 'stylesheet');
+            link.setAttribute('type', 'text/css');
+            link.setAttribute('href', stylePath);
+            document.head.appendChild(link);
+
+            let el = document.createElement('div');
+            el.setAttribute('class', 'main');
+            el.textContent = 'hello';
+            document.body.appendChild(el);
+
+            eval(output[0].code);
+
+            await wait(2000);
+
+            expect(window.getComputedStyle(el).color).to.equal('rgb(255, 0, 0)');
+            let preload0 = document.querySelector('link[rel="preload"]');
+            let link0 = document.querySelector('link[rel="stylesheet"]');
+            expect(preload0.getAttribute('href')).to.equal(stylePath);
+            expect(link0.getAttribute('href').startsWith(stylePath)).to.be.true;
+            hmrphase++;
+            hmr_handle.accept();
+
+            await wait(2000);
+            let preload1 = document.querySelector('link[rel="preload"]');
+            let link1 = document.querySelector('link[rel="stylesheet"]');
+            expect(preload1.getAttribute('href')).to.equal(stylePath);
+            expect(link1.getAttribute('href').startsWith(stylePath + '?')).to.be.true;
+
+            expect(window.getComputedStyle(el).color).to.equal('rgb(0, 0, 255)');
+        });
 
 
         describe('Watch Files', () => {
